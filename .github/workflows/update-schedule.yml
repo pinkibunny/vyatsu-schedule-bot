@@ -2,6 +2,9 @@ name: Update schedule
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "17 * * * *"
 
@@ -37,4 +40,3 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "chore: update schedule"
           git push
-
