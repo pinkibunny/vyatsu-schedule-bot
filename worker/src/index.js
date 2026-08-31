@@ -177,11 +177,42 @@ async function handleUpdate(env, update) {
   }
 }
 
+async function configureTelegram(request, env, origin) {
+  const setupSecret = request.headers.get("X-Setup-Token");
+  if (!env.WEBHOOK_SECRET || setupSecret !== env.WEBHOOK_SECRET) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (!env.BOT_TOKEN || !env.WEBHOOK_SECRET) {
+    return Response.json(
+      { ok: false, error: "BOT_TOKEN and WEBHOOK_SECRET are required" },
+      { status: 503 },
+    );
+  }
+  const commands = [
+    { command: "start", description: "Открыть меню расписания" },
+    { command: "today", description: "Расписание на сегодня" },
+    { command: "tomorrow", description: "Расписание на завтра" },
+    { command: "week", description: "Расписание на эту неделю" },
+    { command: "nextweek", description: "Расписание на следующую неделю" },
+    { command: "settings", description: "Выбрать подгруппу" },
+  ];
+  await telegramApi(env, "setMyCommands", { commands });
+  const webhook = await telegramApi(env, "setWebhook", {
+    url: `${origin}/telegram`,
+    secret_token: env.WEBHOOK_SECRET,
+    drop_pending_updates: true,
+  });
+  return Response.json({ ok: true, webhook: `${origin}/telegram`, telegram: webhook });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
       return Response.json({ ok: true, service: "vyatsu-schedule-bot" });
+    }
+    if (request.method === "GET" && url.pathname === "/setup") {
+      return configureTelegram(request, env, url.origin);
     }
     if (request.method !== "POST" || url.pathname !== "/telegram") {
       return new Response("Not found", { status: 404 });
@@ -195,4 +226,3 @@ export default {
     return new Response("OK");
   },
 };
-
