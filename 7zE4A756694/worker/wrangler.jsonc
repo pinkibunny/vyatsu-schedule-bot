@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vyatsu-schedule-bot",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-31",
+  "vars": {
+    "SCHEDULE_URL": "https://raw.githubusercontent.com/pinkibunny/vyatsu-schedule-bot/main/data/schedule.json"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
