@@ -24,6 +24,8 @@ def main() -> None:
         {"command": "start", "description": "Открыть меню расписания"},
         {"command": "today", "description": "Расписание на сегодня"},
         {"command": "tomorrow", "description": "Расписание на завтра"},
+        {"command": "aftertomorrow", "description": "Расписание на послезавтра"},
+        {"command": "day", "description": "Выбрать конкретный день"},
         {"command": "week", "description": "Расписание на эту неделю"},
         {"command": "nextweek", "description": "Расписание на следующую неделю"},
         {"command": "settings", "description": "Выбрать подгруппу"},
@@ -48,4 +50,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

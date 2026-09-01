@@ -125,11 +125,30 @@ function lessonLines(lesson) {
     shortText(lesson.teacher, 300),
     shortText(lesson.room, 150),
   ].filter(Boolean).map(escapeHtml).join(" · ");
-  const result = [`<b>${lesson.start}–${lesson.end}</b>  ${subject}`];
+  const result = [subject];
   if (labels.length) result.push(`<i>${labels.join(" · ")}</i>`);
   if (place) result.push(place);
   else if (lesson.details) result.push(escapeHtml(shortText(lesson.details, 600)));
   return result.join("\n");
+}
+
+function lessonTimeBlocks(lessons) {
+  const blocks = [];
+  const byTime = new Map();
+  for (const lesson of lessons) {
+    const key = `${lesson.start || ""}\u0000${lesson.end || ""}`;
+    let block = byTime.get(key);
+    if (!block) {
+      block = { start: lesson.start, end: lesson.end, lessons: [] };
+      byTime.set(key, block);
+      blocks.push(block);
+    }
+    block.lessons.push(lesson);
+  }
+  return blocks.map(({ start, end, lessons: timeLessons }) => [
+    `<b>${escapeHtml(start)}–${escapeHtml(end)}</b>`,
+    timeLessons.map(lessonLines).join("\n\n"),
+  ].join("\n"));
 }
 
 export function formatDay(day, subgroup = "all") {
@@ -138,7 +157,7 @@ export function formatDay(day, subgroup = "all") {
   }
   const lessons = filterLessons(day.lessons, subgroup);
   if (!lessons.length) return `${dateTitle(day)}\n\nЗанятий нет 🎉`;
-  return `${dateTitle(day)}\n\n${lessons.map(lessonLines).join("\n\n")}`;
+  return `${dateTitle(day)}\n\n${lessonTimeBlocks(lessons).join("\n\n")}`;
 }
 
 function plainDate(isoDate) {

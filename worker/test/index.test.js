@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  calendarKeyboard,
+  calendarPageStart,
   chooseKeyboard,
   loadSchedule,
   mainKeyboard,
@@ -52,8 +54,27 @@ test("period command keyboard keeps the requested scope", () => {
 
 test("main keyboard includes subgroup and data status", () => {
   const keyboard = mainKeyboard("2");
-  assert.match(keyboard.inline_keyboard[2][0].text, /2 подгруппа/);
-  assert.equal(keyboard.inline_keyboard[2][1].callback_data, "status:2");
+  assert.equal(keyboard.inline_keyboard[0][2].callback_data, "show:aftertomorrow:2");
+  assert.equal(keyboard.inline_keyboard[2][0].callback_data, "calendar:2");
+  assert.match(keyboard.inline_keyboard[3][0].text, /2 подгруппа/);
+  assert.equal(keyboard.inline_keyboard[3][1].callback_data, "status:2");
+});
+
+test("calendar shows known dates and keeps subgroup", () => {
+  const twoWeeks = {
+    ...schedule,
+    days: Array.from({ length: 14 }, (_, offset) => ({
+      date: new Date(Date.UTC(2026, 7, 31 + offset)).toISOString().slice(0, 10),
+      weekday: "день",
+      lessons: [],
+    })),
+  };
+  assert.equal(calendarPageStart(twoWeeks, "2026-09-02"), "2026-08-31");
+  const keyboard = calendarKeyboard(twoWeeks, "1", "2026-09-02");
+  assert.equal(keyboard.inline_keyboard[0][0].callback_data, "date:2026-08-31:1");
+  assert.ok(keyboard.inline_keyboard.flat().some((button) =>
+    button.callback_data === "calendar:2026-09-07:1"));
+  assert.equal(keyboard.inline_keyboard.at(-1)[0].callback_data, "set:1");
 });
 
 test("last successful schedule is used when the source is unavailable", async () => {

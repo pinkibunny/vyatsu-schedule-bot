@@ -54,6 +54,20 @@ test("identical subgroup lessons are merged only for combined view", () => {
   assert.match(first, /1 подгруппа/);
 });
 
+test("lessons at the same time share one time heading", () => {
+  const text = formatDay({
+    date: "2026-09-04",
+    weekday: "пятница",
+    lessons: [
+      { subject: "Биотехнология", type: "Лабораторная работа", subgroup: 1, start: "14:00", end: "15:30" },
+      { subject: "Физико-химические методы", type: "Лабораторная работа", subgroup: 2, start: "14:00", end: "15:30" },
+    ],
+  }, "all");
+  assert.equal((text.match(/14:00–15:30/g) || []).length, 1);
+  assert.match(text, /Биотехнология/);
+  assert.match(text, /Физико-химические методы/);
+});
+
 test("lessons unique to one subgroup are not collapsed", () => {
   const lessons = [
     { subject: "A", subgroup: 1, start: "10:00", end: "11:30" },

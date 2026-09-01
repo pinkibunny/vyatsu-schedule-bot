@@ -11,7 +11,9 @@ import {
 } from "./format.js";
 
 const VALID_SUBGROUPS = ["1", "2", "all"];
-const VALID_SCOPES = ["today", "tomorrow", "week", "nextweek"];
+const VALID_SCOPES = ["today", "tomorrow", "aftertomorrow", "week", "nextweek"];
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const WEEKDAYS_SHORT = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export async function telegramApi(env, method, payload, options = {}) {
@@ -117,9 +119,11 @@ export async function loadSchedule(env, options = {}) {
 }
 
 export function chooseKeyboard(scope = null) {
-  const action = (subgroup) => scope
-    ? `show:${scope}:${subgroup}`
-    : `set:${subgroup}`;
+  const action = (subgroup) => {
+    if (scope === "calendar") return `calendar:${subgroup}`;
+    if (scope) return `show:${scope}:${subgroup}`;
+    return `set:${subgroup}`;
+  };
   return {
     inline_keyboard: [
       [
@@ -137,17 +141,87 @@ export function mainKeyboard(subgroup) {
       [
         { text: "Сегодня", callback_data: `show:today:${subgroup}` },
         { text: "Завтра", callback_data: `show:tomorrow:${subgroup}` },
+        { text: "Послезавтра", callback_data: `show:aftertomorrow:${subgroup}` },
       ],
       [
         { text: "Эта неделя", callback_data: `show:week:${subgroup}` },
         { text: "Следующая", callback_data: `show:nextweek:${subgroup}` },
       ],
+      [{ text: "📅 Выбрать день", callback_data: `calendar:${subgroup}` }],
       [
         { text: `⚙️ ${subgroupLabel(subgroup)}`, callback_data: "choose" },
         { text: "🔄 Данные", callback_data: `status:${subgroup}` },
       ],
     ],
   };
+}
+
+function scheduleBounds(schedule) {
+  const dates = schedule.days.map((day) => day.date).sort();
+  return { start: dates[0], end: dates.at(-1) };
+}
+
+export function calendarPageStart(schedule, requestedDate = moscowIsoDate()) {
+  const { start, end } = scheduleBounds(schedule);
+  const firstPage = mondayOf(start);
+  const lastPage = mondayOf(end);
+  const requestedPage = mondayOf(requestedDate);
+  if (requestedPage < firstPage) return firstPage;
+  if (requestedPage > lastPage) return lastPage;
+  return requestedPage;
+}
+
+function calendarButtonText(isoDate) {
+  const value = new Date(`${isoDate}T12:00:00Z`);
+  const day = String(value.getUTCDate()).padStart(2, "0");
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  return `${WEEKDAYS_SHORT[value.getUTCDay()]} · ${day}.${month}`;
+}
+
+function compactDate(isoDate) {
+  return calendarButtonText(isoDate).split(" · ")[1];
+}
+
+export function calendarKeyboard(schedule, subgroup, requestedDate = moscowIsoDate()) {
+  const pageStart = calendarPageStart(schedule, requestedDate);
+  const knownDates = new Set(schedule.days.map((day) => day.date));
+  const dateButtons = [];
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = addDays(pageStart, offset);
+    if (!knownDates.has(date)) continue;
+    dateButtons.push({
+      text: calendarButtonText(date),
+      callback_data: `date:${date}:${subgroup}`,
+    });
+  }
+
+  const rows = [];
+  for (let index = 0; index < dateButtons.length; index += 2) {
+    rows.push(dateButtons.slice(index, index + 2));
+  }
+
+  const { start, end } = scheduleBounds(schedule);
+  const navigation = [];
+  const previousPage = addDays(pageStart, -7);
+  const nextPage = addDays(pageStart, 7);
+  if (addDays(pageStart, -1) >= start) {
+    navigation.push({ text: "⬅️ Раньше", callback_data: `calendar:${previousPage}:${subgroup}` });
+  }
+  if (nextPage <= end) {
+    navigation.push({ text: "Позже ➡️", callback_data: `calendar:${nextPage}:${subgroup}` });
+  }
+  if (navigation.length) rows.push(navigation);
+  rows.push([{ text: "↩️ В меню", callback_data: `set:${subgroup}` }]);
+  return { inline_keyboard: rows };
+}
+
+function calendarText(schedule, subgroup, requestedDate) {
+  const pageStart = calendarPageStart(schedule, requestedDate);
+  return [
+    "<b>Выбери день</b>",
+    `${compactDate(pageStart)} — ${compactDate(addDays(pageStart, 6))}`,
+    escapeHtml(subgroupLabel(subgroup)),
+  ].join("\n");
 }
 
 async function sendMessage(env, chatId, text, replyMarkup) {
@@ -227,16 +301,38 @@ async function replaceWithChoice(env, callback) {
   await sendMessage(env, chatId, "Выбери подгруппу:", chooseKeyboard());
 }
 
+async function replaceWithCalendar(env, callback, subgroup, requestedDate) {
+  const chatId = callback.message?.chat?.id;
+  const messageId = callback.message?.message_id;
+  if (!chatId) return;
+  const schedule = await loadSchedule(env);
+  const text = calendarText(schedule, subgroup, requestedDate);
+  const keyboard = calendarKeyboard(schedule, subgroup, requestedDate);
+  if (messageId) {
+    try {
+      await editMessage(env, chatId, messageId, text, keyboard);
+      return;
+    } catch (error) {
+      console.error("Edit calendar:", error);
+    }
+  }
+  await sendMessage(env, chatId, text, keyboard);
+}
+
 async function sendSchedule(env, chatId, scope, subgroup) {
   const schedule = await loadSchedule(env);
   const today = moscowIsoDate();
   const byDate = new Map(schedule.days.map((day) => [day.date, day]));
   let messages;
 
-  if (scope === "today" || scope === "tomorrow") {
-    const date = scope === "today" ? today : addDays(today, 1);
+  if (["today", "tomorrow", "aftertomorrow"].includes(scope)) {
+    const offset = { today: 0, tomorrow: 1, aftertomorrow: 2 }[scope];
+    const date = addDays(today, offset);
     const day = byDate.get(date);
     messages = [day ? formatDay(day, subgroup) : formatMissingDate(schedule, date)];
+  } else if (ISO_DATE_PATTERN.test(scope)) {
+    const day = byDate.get(scope);
+    messages = [day ? formatDay(day, subgroup) : formatMissingDate(schedule, scope)];
   } else if (scope === "week") {
     messages = formatRange(schedule, mondayOf(today), 7, subgroup);
   } else if (scope === "nextweek") {
@@ -278,12 +374,17 @@ async function handleMessage(env, message) {
   const commandScopes = new Map([
     ["/today", "today"],
     ["/tomorrow", "tomorrow"],
+    ["/aftertomorrow", "aftertomorrow"],
     ["/week", "week"],
     ["/nextweek", "nextweek"],
   ]);
   if (commandScopes.has(command)) {
     const scope = commandScopes.get(command);
     await sendMessage(env, chatId, "Для какой подгруппы показать?", chooseKeyboard(scope));
+    return;
+  }
+  if (command === "/day") {
+    await sendMessage(env, chatId, "Для какой подгруппы выбрать день?", chooseKeyboard("calendar"));
     return;
   }
 
@@ -316,6 +417,22 @@ async function handleCallback(env, callback) {
     if (!VALID_SUBGROUPS.includes(subgroup)) return;
     await removeKeyboard(env, callback);
     await sendDataStatus(env, chatId, subgroup);
+    return;
+  }
+  if (data.startsWith("calendar:")) {
+    const parts = data.split(":");
+    const subgroup = parts.at(-1);
+    const requestedDate = parts.length === 3 ? parts[1] : undefined;
+    if (!VALID_SUBGROUPS.includes(subgroup)) return;
+    if (requestedDate && !ISO_DATE_PATTERN.test(requestedDate)) return;
+    await replaceWithCalendar(env, callback, subgroup, requestedDate);
+    return;
+  }
+  if (data.startsWith("date:")) {
+    const [, date, subgroup] = data.split(":");
+    if (!ISO_DATE_PATTERN.test(date) || !VALID_SUBGROUPS.includes(subgroup)) return;
+    await removeKeyboard(env, callback);
+    await sendSchedule(env, chatId, date, subgroup);
     return;
   }
   if (data.startsWith("show:")) {
