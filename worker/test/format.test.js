@@ -4,7 +4,11 @@ import test from "node:test";
 
 import {
   addDays,
+  chunkBlocks,
+  collapseIdenticalSubgroups,
+  formatDataStatus,
   formatDay,
+  formatMissingDate,
   formatRange,
   mondayOf,
 } from "../src/format.js";
@@ -39,3 +43,39 @@ test("week output stays under Telegram message limit", () => {
   assert.ok(chunks.every((chunk) => chunk.length < 4096));
 });
 
+test("identical subgroup lessons are merged only for combined view", () => {
+  const day = schedule.days.find((item) => item.date === "2026-09-04");
+  const combined = formatDay(day, "all");
+  assert.match(combined, /обе подгруппы/);
+  assert.equal((combined.match(/14:00–15:30/g) || []).length, 1);
+
+  const first = formatDay(day, "1");
+  assert.doesNotMatch(first, /обе подгруппы/);
+  assert.match(first, /1 подгруппа/);
+});
+
+test("lessons unique to one subgroup are not collapsed", () => {
+  const lessons = [
+    { subject: "A", subgroup: 1, start: "10:00", end: "11:30" },
+    { subject: "B", subgroup: 2, start: "10:00", end: "11:30" },
+  ];
+  assert.deepEqual(collapseIdenticalSubgroups(lessons), lessons);
+});
+
+test("missing dates are distinguished from days without lessons", () => {
+  assert.match(formatMissingDate(schedule, "2026-09-14"), /ещё не опубликовано/);
+  assert.match(formatRange(schedule, "2026-09-14", 7, "all")[0], /ещё не опубликовано/);
+});
+
+test("long week output is split below the configured limit", () => {
+  const paragraph = "Занятие ".repeat(150);
+  const chunks = chunkBlocks([`${paragraph}\n\n${paragraph}\n\n${paragraph}`], 1000);
+  assert.ok(chunks.length > 1);
+  assert.ok(chunks.every((chunk) => chunk.length <= 1000));
+});
+
+test("data status shows coverage and update cadence", () => {
+  const text = formatDataStatus(schedule, "2026-09-01");
+  assert.match(text, /31 августа — 13 сентября/);
+  assert.match(text, /каждый час/);
+});

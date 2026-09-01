@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -15,7 +15,8 @@ from vyatsu_schedule import (
     DEFAULT_SCHEDULE_PAGE,
     build_schedule,
     discover_period_links,
-    select_period,
+    merge_schedules,
+    select_periods,
 )
 
 
@@ -47,37 +48,58 @@ def main() -> int:
             group=args.group,
             base_url=args.page_url,
         )
-        period = select_period(periods, args.target_date)
+        selected_periods = select_periods(periods, args.target_date, limit=2)
+        schedules = []
+        for period in selected_periods:
+            pdf_response = client.get(period.url)
+            pdf_response.raise_for_status()
+            if not pdf_response.content.startswith(b"%PDF"):
+                raise ValueError(f"Сервер ВятГУ вернул не PDF: {period.url}")
+            schedules.append(
+                build_schedule(
+                    pdf_bytes=pdf_response.content,
+                    period=period,
+                    group=args.group,
+                    page_url=args.page_url,
+                )
+            )
 
-        pdf_response = client.get(period.url)
-        pdf_response.raise_for_status()
-        if not pdf_response.content.startswith(b"%PDF"):
-            raise ValueError("Сервер ВятГУ вернул не PDF")
-
-    schedule = build_schedule(
-        pdf_bytes=pdf_response.content,
-        period=period,
-        group=args.group,
-    )
+    checked_at = datetime.now(timezone.utc)
+    schedule = merge_schedules(schedules, generated_at=checked_at)
     lessons = sum(len(day["lessons"]) for day in schedule["days"])
+    content_changed = True
     if args.output.exists():
         previous = json.loads(args.output.read_text(encoding="utf-8"))
         comparable_keys = ("group", "source", "period", "days")
         if all(previous.get(key) == schedule.get(key) for key in comparable_keys):
-            print(
-                f"Без изменений: {args.group}, {len(schedule['days'])} дней, "
-                f"{lessons} записей"
+            content_changed = False
+            schedule["generated_at"] = previous.get(
+                "generated_at", schedule["generated_at"]
             )
-            return 0
+            try:
+                previous_check = datetime.fromisoformat(previous["checked_at"])
+                checked_today = (
+                    previous_check.astimezone(ZoneInfo("Europe/Moscow")).date()
+                    == checked_at.astimezone(ZoneInfo("Europe/Moscow")).date()
+                )
+            except (KeyError, TypeError, ValueError):
+                checked_today = False
+            if checked_today:
+                print(
+                    f"Без изменений: {args.group}, {len(schedule['days'])} дней, "
+                    f"{lessons} записей, {len(selected_periods)} PDF"
+                )
+                return 0
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(schedule, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    action = "Обновлено расписание" if content_changed else "Обновлена отметка проверки"
     print(
-        f"Обновлено: {args.group}, {len(schedule['days'])} дней, "
-        f"{lessons} записей, {period.url}"
+        f"{action}: {args.group}, {len(schedule['days'])} дней, "
+        f"{lessons} записей, {len(selected_periods)} PDF"
     )
     return 0
 

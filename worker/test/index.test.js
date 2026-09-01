@@ -1,0 +1,81 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  chooseKeyboard,
+  loadSchedule,
+  mainKeyboard,
+  telegramApi,
+} from "../src/index.js";
+
+const env = {
+  BOT_TOKEN: "test-token",
+  SCHEDULE_URL: "https://example.test/schedule.json",
+};
+
+const schedule = {
+  schema_version: 1,
+  group: "БТб-3101-03-00",
+  generated_at: "2026-09-01T00:00:00Z",
+  period: {
+    schedule_start: "2026-08-31",
+    schedule_end: "2026-09-13",
+  },
+  days: [{ date: "2026-09-01", weekday: "вторник", lessons: [] }],
+};
+
+test("Telegram 429 response is retried after retry_after", async () => {
+  const responses = [
+    new Response(JSON.stringify({
+      ok: false,
+      description: "Too Many Requests",
+      parameters: { retry_after: 2 },
+    }), { status: 429 }),
+    new Response(JSON.stringify({ ok: true, result: true }), { status: 200 }),
+  ];
+  const waits = [];
+  let calls = 0;
+  const result = await telegramApi(env, "sendMessage", { chat_id: 1 }, {
+    fetchImpl: async () => responses[calls++],
+    sleepImpl: async (milliseconds) => waits.push(milliseconds),
+  });
+  assert.equal(result.ok, true);
+  assert.equal(calls, 2);
+  assert.deepEqual(waits, [2000]);
+});
+
+test("period command keyboard keeps the requested scope", () => {
+  const keyboard = chooseKeyboard("tomorrow");
+  assert.equal(keyboard.inline_keyboard[0][0].callback_data, "show:tomorrow:1");
+  assert.equal(keyboard.inline_keyboard[1][0].callback_data, "show:tomorrow:all");
+});
+
+test("main keyboard includes subgroup and data status", () => {
+  const keyboard = mainKeyboard("2");
+  assert.match(keyboard.inline_keyboard[2][0].text, /2 подгруппа/);
+  assert.equal(keyboard.inline_keyboard[2][1].callback_data, "status:2");
+});
+
+test("last successful schedule is used when the source is unavailable", async () => {
+  let stored;
+  const cache = {
+    async put(_request, response) {
+      stored = response.clone();
+    },
+    async match() {
+      return stored?.clone();
+    },
+  };
+  const live = await loadSchedule(env, {
+    cache,
+    fetchImpl: async () => new Response(JSON.stringify(schedule), { status: 200 }),
+  });
+  assert.equal(live._from_backup, undefined);
+
+  const backup = await loadSchedule(env, {
+    cache,
+    fetchImpl: async () => new Response("unavailable", { status: 503 }),
+  });
+  assert.equal(backup._from_backup, true);
+  assert.equal(backup.group, "БТб-3101-03-00");
+});

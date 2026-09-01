@@ -6,8 +6,11 @@ from .parser import (
     PeriodLink,
     build_schedule,
     discover_period_links,
+    merge_schedules,
     parse_pdf,
     select_period,
+    select_periods,
+    validate_schedule,
 )
 
 __all__ = [
@@ -16,7 +19,9 @@ __all__ = [
     "PeriodLink",
     "build_schedule",
     "discover_period_links",
+    "merge_schedules",
     "parse_pdf",
     "select_period",
+    "select_periods",
+    "validate_schedule",
 ]
-

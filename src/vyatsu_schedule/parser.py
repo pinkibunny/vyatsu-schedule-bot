@@ -5,7 +5,7 @@ import io
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 from urllib.parse import urljoin
 
 import pdfplumber
@@ -23,12 +23,28 @@ PERIOD_RE = re.compile(
     r"(?P<group_id>\d+)_(?P<semester>\d+)_"
     r"(?P<start>\d{8})_(?P<end>\d{8})\.pdf(?:\?.*)?$"
 )
+CLOCK_RE = re.compile(r"^\d{2}:\d{2}$")
 TIME_RE = re.compile(r"^(?P<start>\d{2}:\d{2})-(?P<end>\d{2}:\d{2})$")
-GROUP_PREFIX_RE_TEMPLATE = r"{group},\s*0(?P<subgroup>[12])\s+подгруппа\s+"
-LESSON_TYPES = ("Практическое занятие", "Лабораторная работа", "Лекция")
+GROUP_PREFIX_RE_TEMPLATE = r"{group}\s*,?\s*0?(?P<subgroup>[12])\s+подгруппа\s+"
+LESSON_TYPES = (
+    "Практическое занятие",
+    "Лабораторная работа",
+    "Контрольная работа",
+    "Самостоятельная работа",
+    "Курсовое проектирование",
+    "Консультация",
+    "Экзамен",
+    "Зачет",
+    "Зачёт",
+    "Лекция",
+)
 TEACHER_ROOM_RE = re.compile(
     r"^(?P<teacher>[А-ЯЁ][А-Яа-яЁё-]+\s+[А-ЯЁ]\.\s*[А-ЯЁ]\.)\s+"
-    r"(?P<room>\d{1,2}-\d{1,4}[А-Яа-яA-Za-z_]*|[^\s]+)$"
+    r"(?P<room>\d{1,2}-[0-9А-Яа-яA-Za-z,_-]+|[^\s]+)$"
+)
+ROOM_RE = re.compile(
+    r"^(?:\d{1,2}-[0-9А-Яа-яA-Za-z,_-]+|ДОТ|спортзал|актовый\s+зал)$",
+    re.IGNORECASE,
 )
 SPORT_RE = re.compile(
     r"^(?P<subject>Элективные дисциплины \(модули\) по физической культуре и спорту)\s+"
@@ -132,6 +148,28 @@ def select_period(periods: Iterable[PeriodLink], target: date) -> PeriodLink:
     return items[-1]
 
 
+def select_periods(
+    periods: Iterable[PeriodLink],
+    target: date,
+    *,
+    limit: int = 2,
+) -> list[PeriodLink]:
+    """Select the active period and the next published period, when available."""
+
+    if limit < 1:
+        raise ValueError("Количество периодов должно быть положительным")
+    items = sorted(periods, key=lambda item: (item.schedule_start, item.end, item.url))
+    primary = select_period(items, target)
+    result = [primary]
+    for item in items:
+        if item.schedule_start <= primary.schedule_start:
+            continue
+        result.append(item)
+        if len(result) >= limit:
+            break
+    return result
+
+
 def _clean_cell(value: str | None) -> str:
     if not value:
         return ""
@@ -143,7 +181,7 @@ def _clean_cell(value: str | None) -> str:
 
 
 def _split_cell_entries(text: str, group: str) -> list[str]:
-    prefix = re.escape(group) + r",\s*0[12]\s+подгруппа"
+    prefix = re.escape(group) + r"\s*,?\s*0?[12]\s+подгруппа"
     starts = [match.start() for match in re.finditer(prefix, text)]
     if len(starts) <= 1:
         return [text]
@@ -154,12 +192,17 @@ def _split_cell_entries(text: str, group: str) -> list[str]:
 
 
 def _split_teacher_room(tail: str) -> tuple[str, str]:
-    match = TEACHER_ROOM_RE.match(tail.strip())
-    if not match:
-        return "", ""
-    teacher = re.sub(r"\s+", " ", match.group("teacher"))
-    room = match.group("room").rstrip("_")
-    return teacher, room
+    cleaned = tail.strip()
+    match = TEACHER_ROOM_RE.match(cleaned)
+    if match:
+        teacher = re.sub(r"\s+", " ", match.group("teacher"))
+        room = match.group("room").rstrip("_")
+        return teacher, room
+
+    parts = cleaned.rsplit(maxsplit=1)
+    if len(parts) == 2 and ROOM_RE.fullmatch(parts[1]):
+        return re.sub(r"\s+", " ", parts[0]), parts[1].rstrip("_")
+    return "", ""
 
 
 def _parse_entry(raw: str, *, group: str) -> dict[str, Any]:
@@ -173,8 +216,9 @@ def _parse_entry(raw: str, *, group: str) -> dict[str, Any]:
 
     sport_match = SPORT_RE.match(text)
     if sport_match:
-        teacher, room = _split_teacher_room(sport_match.group("tail"))
-        return {
+        tail = sport_match.group("tail").strip()
+        teacher, room = _split_teacher_room(tail)
+        lesson = {
             "subject": sport_match.group("subject"),
             "type": "Практическое занятие",
             "teacher": teacher,
@@ -183,6 +227,9 @@ def _parse_entry(raw: str, *, group: str) -> dict[str, Any]:
             "stream_code": sport_match.group("stream").strip(),
             "raw": _clean_cell(raw),
         }
+        if tail and not teacher and not room:
+            lesson["details"] = tail
+        return lesson
 
     type_match: tuple[int, str] | None = None
     for lesson_type in LESSON_TYPES:
@@ -205,7 +252,7 @@ def _parse_entry(raw: str, *, group: str) -> dict[str, Any]:
     subject = text[:index].strip()
     tail = text[index + len(lesson_type) :].strip()
     teacher, room = _split_teacher_room(tail)
-    return {
+    lesson = {
         "subject": subject,
         "type": lesson_type,
         "teacher": teacher,
@@ -214,6 +261,9 @@ def _parse_entry(raw: str, *, group: str) -> dict[str, Any]:
         "stream_code": None,
         "raw": _clean_cell(raw),
     }
+    if tail and not teacher and not room:
+        lesson["details"] = tail
+    return lesson
 
 
 def parse_pdf(
@@ -291,6 +341,7 @@ def build_schedule(
     period: PeriodLink,
     group: str = DEFAULT_GROUP,
     generated_at: datetime | None = None,
+    page_url: str = DEFAULT_SCHEDULE_PAGE,
 ) -> dict[str, Any]:
     generated_at = generated_at or datetime.now(timezone.utc)
     days = parse_pdf(pdf_bytes, period=period, group=group)
@@ -299,7 +350,7 @@ def build_schedule(
         "group": group,
         "generated_at": generated_at.astimezone(timezone.utc).isoformat(),
         "source": {
-            "page_url": DEFAULT_SCHEDULE_PAGE,
+            "page_url": page_url,
             "pdf_url": period.url,
             "pdf_sha256": hashlib.sha256(pdf_bytes).hexdigest(),
         },
@@ -312,3 +363,115 @@ def build_schedule(
         "days": days,
     }
 
+
+def validate_schedule(schedule: dict[str, Any]) -> None:
+    """Reject structurally incomplete data before it can replace the working JSON."""
+
+    if schedule.get("schema_version") != 1:
+        raise ValueError("Неподдерживаемая версия JSON расписания")
+    if not schedule.get("group"):
+        raise ValueError("В расписании отсутствует группа")
+    days = schedule.get("days")
+    if not isinstance(days, list) or not days:
+        raise ValueError("В расписании отсутствуют дни")
+
+    dates: list[date] = []
+    lesson_count = 0
+    typed_lessons = 0
+    for day in days:
+        try:
+            current_date = date.fromisoformat(day["date"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError("В расписании найдена некорректная дата") from error
+        dates.append(current_date)
+        if day.get("weekday") != WEEKDAYS_RU[current_date.weekday()]:
+            raise ValueError(f"У дня {current_date} неверно указана неделя")
+        lessons = day.get("lessons")
+        if not isinstance(lessons, list):
+            raise ValueError(f"У дня {current_date} отсутствует список занятий")
+        for lesson in lessons:
+            lesson_count += 1
+            if lesson.get("type"):
+                typed_lessons += 1
+            if not str(lesson.get("subject", "")).strip():
+                raise ValueError(f"У занятия {current_date} отсутствует название")
+            if not CLOCK_RE.fullmatch(str(lesson.get("start", ""))):
+                raise ValueError(f"У занятия {current_date} некорректное время начала")
+            if not CLOCK_RE.fullmatch(str(lesson.get("end", ""))):
+                raise ValueError(f"У занятия {current_date} некорректное время окончания")
+            if lesson.get("start") >= lesson.get("end"):
+                raise ValueError(f"У занятия {current_date} перепутано время")
+            if lesson.get("subgroup") not in (None, 1, 2):
+                raise ValueError(f"У занятия {current_date} некорректная подгруппа")
+            if "подгруппа" in str(lesson.get("raw", "")).lower() and lesson.get("subgroup") is None:
+                raise ValueError(f"Не удалось распознать подгруппу у занятия {current_date}")
+
+    if dates != sorted(dates) or len(dates) != len(set(dates)):
+        raise ValueError("Даты расписания повторяются или идут не по порядку")
+    if lesson_count == 0:
+        raise ValueError("В расписании нет ни одного занятия")
+    if typed_lessons * 2 < lesson_count:
+        raise ValueError("Не удалось распознать тип у большинства занятий")
+
+    period = schedule.get("period", {})
+    if period.get("schedule_start") != dates[0].isoformat():
+        raise ValueError("Начало периода не совпадает с первым днём")
+    if period.get("schedule_end") != dates[-1].isoformat():
+        raise ValueError("Конец периода не совпадает с последним днём")
+
+
+def merge_schedules(
+    schedules: Sequence[dict[str, Any]],
+    *,
+    generated_at: datetime | None = None,
+) -> dict[str, Any]:
+    """Merge the active and next two-week PDFs into one backward-compatible JSON."""
+
+    if not schedules:
+        raise ValueError("Нечего объединять")
+    for schedule in schedules:
+        validate_schedule(schedule)
+
+    group = schedules[0]["group"]
+    if any(schedule["group"] != group for schedule in schedules):
+        raise ValueError("Нельзя объединить расписания разных групп")
+
+    by_date: dict[str, dict[str, Any]] = {}
+    period_sources: list[dict[str, Any]] = []
+    for schedule in schedules:
+        source = schedule["source"]
+        period = schedule["period"]
+        period_sources.append(
+            {
+                "pdf_url": source["pdf_url"],
+                "pdf_sha256": source["pdf_sha256"],
+                **period,
+            }
+        )
+        for day in schedule["days"]:
+            by_date[day["date"]] = day
+
+    days = [by_date[key] for key in sorted(by_date)]
+    generated_at = generated_at or datetime.now(timezone.utc)
+    first_source = schedules[0]["source"]
+    result = {
+        "schema_version": 1,
+        "group": group,
+        "generated_at": generated_at.astimezone(timezone.utc).isoformat(),
+        "checked_at": generated_at.astimezone(timezone.utc).isoformat(),
+        "source": {
+            "page_url": first_source["page_url"],
+            "pdf_url": first_source["pdf_url"],
+            "pdf_sha256": first_source["pdf_sha256"],
+            "pdfs": period_sources,
+        },
+        "period": {
+            "published_start": min(item["published_start"] for item in period_sources),
+            "published_end": max(item["published_end"] for item in period_sources),
+            "schedule_start": days[0]["date"],
+            "schedule_end": days[-1]["date"],
+        },
+        "days": days,
+    }
+    validate_schedule(result)
+    return result
