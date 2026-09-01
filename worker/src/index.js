@@ -409,7 +409,7 @@ async function receiveAnonymousFeedback(env, message) {
   await sendMessage(
     env,
     env.ADMIN_CHAT_ID,
-    `<b>Анонимный отзыв / идея</b>\n\n${escapeHtml(feedback)}`,
+    `🚨 <b>АНОНИМНЫЙ ОТЗЫВ / ИДЕЯ</b> 🚨\n\n${escapeHtml(feedback)}`,
   );
   await sendMessage(
     env,

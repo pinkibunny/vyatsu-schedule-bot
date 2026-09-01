@@ -152,6 +152,7 @@ test("feedback relay strips all sender metadata", async () => {
     await backgroundTask;
 
     assert.equal(telegramPayloads[0].chat_id, "999999");
+    assert.match(telegramPayloads[0].text, /^🚨.*ОТЗЫВ.*🚨/);
     assert.match(telegramPayloads[0].text, /кнопку расписания на месяц/);
     assert.doesNotMatch(telegramPayloads[0].text, /Секретное имя|secret_user|123456/);
     assert.equal(telegramPayloads[1].chat_id, 123456);
