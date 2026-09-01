@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
+import worker, {
+  FEEDBACK_PROMPT,
   calendarKeyboard,
   calendarPageStart,
   chooseKeyboard,
@@ -60,6 +61,16 @@ test("main keyboard includes subgroup and data status", () => {
   assert.equal(keyboard.inline_keyboard[3][1].callback_data, "status:2");
 });
 
+test("feedback button is shown only after admin setup", () => {
+  const disabled = mainKeyboard("all", false);
+  assert.ok(!disabled.inline_keyboard.flat().some((button) =>
+    button.callback_data?.startsWith("feedback:")));
+
+  const enabled = mainKeyboard("all", true);
+  assert.equal(enabled.inline_keyboard.at(-1)[0].text, "💡 Отзыв / идея");
+  assert.equal(enabled.inline_keyboard.at(-1)[0].callback_data, "feedback:all");
+});
+
 test("calendar shows known dates and keeps subgroup", () => {
   const twoWeeks = {
     ...schedule,
@@ -99,4 +110,53 @@ test("last successful schedule is used when the source is unavailable", async ()
   });
   assert.equal(backup._from_backup, true);
   assert.equal(backup.group, "БТб-3101-03-00");
+});
+
+test("feedback relay strips all sender metadata", async () => {
+  const originalFetch = globalThis.fetch;
+  const telegramPayloads = [];
+  globalThis.fetch = async (_url, options) => {
+    telegramPayloads.push(JSON.parse(options.body));
+    return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+  };
+  try {
+    let backgroundTask;
+    const request = new Request("https://worker.test/telegram", {
+      method: "POST",
+      headers: { "X-Telegram-Bot-Api-Secret-Token": "webhook-secret" },
+      body: JSON.stringify({
+        update_id: 1,
+        message: {
+          message_id: 10,
+          chat: { id: 123456, type: "private" },
+          from: { id: 123456, first_name: "Секретное имя", username: "secret_user" },
+          text: "Добавьте кнопку расписания на месяц",
+          reply_to_message: {
+            message_id: 9,
+            from: { id: 1, is_bot: true },
+            text: FEEDBACK_PROMPT,
+          },
+        },
+      }),
+    });
+    const response = await worker.fetch(request, {
+      ...env,
+      WEBHOOK_SECRET: "webhook-secret",
+      ADMIN_CHAT_ID: "999999",
+    }, {
+      waitUntil(promise) {
+        backgroundTask = promise;
+      },
+    });
+    assert.equal(response.status, 200);
+    await backgroundTask;
+
+    assert.equal(telegramPayloads[0].chat_id, "999999");
+    assert.match(telegramPayloads[0].text, /кнопку расписания на месяц/);
+    assert.doesNotMatch(telegramPayloads[0].text, /Секретное имя|secret_user|123456/);
+    assert.equal(telegramPayloads[1].chat_id, 123456);
+    assert.match(telegramPayloads[1].text, /анонимно отправлено/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

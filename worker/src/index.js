@@ -14,6 +14,11 @@ const VALID_SUBGROUPS = ["1", "2", "all"];
 const VALID_SCOPES = ["today", "tomorrow", "aftertomorrow", "week", "nextweek"];
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const WEEKDAYS_SHORT = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+export const FEEDBACK_PROMPT = [
+  "Если хотите дать обратную связь, оставить отзыв или предложение либо сообщить о баге — ответьте на это сообщение одним текстовым сообщением 👇",
+  "",
+  "Администратор получит только текст — без имени, username и Telegram ID. Если хотите получить ответ, укажите свой @username в тексте.",
+].join("\n");
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export async function telegramApi(env, method, payload, options = {}) {
@@ -135,9 +140,8 @@ export function chooseKeyboard(scope = null) {
   };
 }
 
-export function mainKeyboard(subgroup) {
-  return {
-    inline_keyboard: [
+export function mainKeyboard(subgroup, feedbackEnabled = false) {
+  const rows = [
       [
         { text: "Сегодня", callback_data: `show:today:${subgroup}` },
         { text: "Завтра", callback_data: `show:tomorrow:${subgroup}` },
@@ -152,8 +156,11 @@ export function mainKeyboard(subgroup) {
         { text: `⚙️ ${subgroupLabel(subgroup)}`, callback_data: "choose" },
         { text: "🔄 Данные", callback_data: `status:${subgroup}` },
       ],
-    ],
-  };
+  ];
+  if (feedbackEnabled) {
+    rows.push([{ text: "💡 Отзыв / идея", callback_data: `feedback:${subgroup}` }]);
+  }
+  return { inline_keyboard: rows };
 }
 
 function scheduleBounds(schedule) {
@@ -268,7 +275,12 @@ function menuText(subgroup) {
 }
 
 async function sendMenu(env, chatId, subgroup) {
-  return sendMessage(env, chatId, menuText(subgroup), mainKeyboard(subgroup));
+  return sendMessage(
+    env,
+    chatId,
+    menuText(subgroup),
+    mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID)),
+  );
 }
 
 async function replaceWithMenu(env, callback, subgroup) {
@@ -277,7 +289,13 @@ async function replaceWithMenu(env, callback, subgroup) {
   if (!chatId) return;
   if (messageId) {
     try {
-      await editMessage(env, chatId, messageId, menuText(subgroup), mainKeyboard(subgroup));
+      await editMessage(
+        env,
+        chatId,
+        messageId,
+        menuText(subgroup),
+        mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID)),
+      );
       return;
     } catch (error) {
       console.error("Edit menu:", error);
@@ -348,7 +366,9 @@ async function sendSchedule(env, chatId, scope, subgroup) {
   ].join("\n");
   for (let index = 0; index < messages.length; index += 1) {
     if (index > 0) await sleep(1050);
-    const replyMarkup = index === messages.length - 1 ? mainKeyboard(subgroup) : undefined;
+    const replyMarkup = index === messages.length - 1
+      ? mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID))
+      : undefined;
     await sendMessage(env, chatId, messages[index], replyMarkup);
   }
 }
@@ -359,13 +379,72 @@ async function sendDataStatus(env, chatId, subgroup) {
     env,
     chatId,
     formatDataStatus(schedule),
-    mainKeyboard(subgroup),
+    mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID)),
   );
+}
+
+function isFeedbackReply(message) {
+  return Boolean(
+    message.reply_to_message?.from?.is_bot &&
+    message.reply_to_message?.text === FEEDBACK_PROMPT,
+  );
+}
+
+async function receiveAnonymousFeedback(env, message) {
+  const chatId = message.chat.id;
+  if (!env.ADMIN_CHAT_ID) {
+    await sendMessage(env, chatId, "Сбор отзывов пока не настроен.");
+    return;
+  }
+  const feedback = String(message.text || "").trim();
+  if (!feedback) {
+    await sendMessage(env, chatId, "Пока можно отправить только текстовое сообщение.");
+    return;
+  }
+  if (feedback.length > 3500) {
+    await sendMessage(env, chatId, "Сообщение слишком длинное. Сократите его до 3500 символов.");
+    return;
+  }
+
+  await sendMessage(
+    env,
+    env.ADMIN_CHAT_ID,
+    `<b>Анонимный отзыв / идея</b>\n\n${escapeHtml(feedback)}`,
+  );
+  await sendMessage(
+    env,
+    chatId,
+    "Спасибо! Сообщение анонимно отправлено администратору.",
+  );
+}
+
+async function requestFeedback(env, chatId) {
+  if (!env.ADMIN_CHAT_ID) {
+    await sendMessage(env, chatId, "Сбор отзывов пока не настроен.");
+    return;
+  }
+  await sendMessage(env, chatId, FEEDBACK_PROMPT, {
+    force_reply: true,
+    selective: true,
+    input_field_placeholder: "Напишите отзыв, идею или баг…",
+  });
 }
 
 async function handleMessage(env, message) {
   const chatId = message.chat.id;
+  if (isFeedbackReply(message)) {
+    await receiveAnonymousFeedback(env, message);
+    return;
+  }
   const command = (message.text || "").split(/\s+/)[0].split("@")[0].toLowerCase();
+  if (command === "/myid") {
+    await sendMessage(
+      env,
+      chatId,
+      `Ваш Telegram ID: <code>${Number(message.from?.id || chatId)}</code>`,
+    );
+    return;
+  }
   if (command === "/start" || command === "/settings") {
     await sendMessage(env, chatId, "Выбери, какое расписание показывать:", chooseKeyboard());
     return;
@@ -433,6 +512,12 @@ async function handleCallback(env, callback) {
     if (!ISO_DATE_PATTERN.test(date) || !VALID_SUBGROUPS.includes(subgroup)) return;
     await removeKeyboard(env, callback);
     await sendSchedule(env, chatId, date, subgroup);
+    return;
+  }
+  if (data.startsWith("feedback:")) {
+    const subgroup = data.slice(9);
+    if (!VALID_SUBGROUPS.includes(subgroup)) return;
+    await requestFeedback(env, chatId);
     return;
   }
   if (data.startsWith("show:")) {
