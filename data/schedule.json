@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "group": "БТб-3101-03-00",
-  "generated_at": "2026-09-05T19:05:35.452682+00:00",
-  "checked_at": "2026-09-05T21:19:42.739146+00:00",
+  "generated_at": "2026-09-06T19:15:34.646178+00:00",
+  "checked_at": "2026-09-06T19:15:34.646178+00:00",
   "source": {
     "page_url": "https://www.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html",
     "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_01092026_13092026.pdf",
-    "pdf_sha256": "e4fd5feec48bed99ade8f5e808960b933c695fee52b61023a49da2913a1e0893",
+    "pdf_sha256": "bdb536d482cbf1dbb43be80e9771e60bc630a84d4d71e6a3126e61f531c4ef98",
     "pdfs": [
       {
         "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_01092026_13092026.pdf",
-        "pdf_sha256": "e4fd5feec48bed99ade8f5e808960b933c695fee52b61023a49da2913a1e0893",
+        "pdf_sha256": "bdb536d482cbf1dbb43be80e9771e60bc630a84d4d71e6a3126e61f531c4ef98",
         "published_start": "2026-09-01",
         "published_end": "2026-09-13",
         "schedule_start": "2026-08-31",
