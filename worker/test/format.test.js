@@ -22,8 +22,20 @@ test("date helpers cross month boundaries", () => {
   assert.equal(mondayOf("2026-09-03"), "2026-08-31");
 });
 
-test("day formatting includes real lesson data", () => {
-  const day = schedule.days.find((item) => item.date === "2026-09-01");
+test("day formatting includes lesson details", () => {
+  const day = {
+    date: "2026-09-01",
+    weekday: "вторник",
+    lessons: [{
+      subject: "Специальные главы биохимии",
+      type: "Лекция",
+      teacher: "Лундовских И.А.",
+      room: "1-242",
+      subgroup: null,
+      start: "14:00",
+      end: "15:30",
+    }],
+  };
   const text = formatDay(day, "all");
   assert.match(text, /Специальные главы биохимии/);
   assert.match(text, /Лундовских И\.А\./);
@@ -31,20 +43,43 @@ test("day formatting includes real lesson data", () => {
 });
 
 test("subgroup filter excludes the other subgroup", () => {
-  const day = schedule.days.find((item) => item.date === "2026-09-03");
+  const day = {
+    date: "2026-09-03",
+    weekday: "четверг",
+    lessons: [
+      { subject: "Биотехнология", type: "Лабораторная работа", subgroup: 1, start: "10:00", end: "11:30" },
+      { subject: "Современные физико-химические методы", type: "Лабораторная работа", subgroup: 2, start: "10:00", end: "11:30" },
+    ],
+  };
   const text = formatDay(day, "1");
   assert.match(text, /Биотехнология/);
   assert.doesNotMatch(text, /Современные физико-химические методы/);
 });
 
 test("week output stays under Telegram message limit", () => {
-  const chunks = formatRange(schedule, "2026-08-31", 7, "all");
+  const firstPublishedDate = schedule.days.map((day) => day.date).sort()[0];
+  const chunks = formatRange(schedule, firstPublishedDate, 7, "all");
   assert.ok(chunks.length >= 1);
   assert.ok(chunks.every((chunk) => chunk.length < 4096));
 });
 
 test("identical subgroup lessons are merged only for combined view", () => {
-  const day = schedule.days.find((item) => item.date === "2026-09-04");
+  const sharedLesson = {
+    subject: "Биотехнология",
+    type: "Лабораторная работа",
+    teacher: "Преподаватель",
+    room: "1-101",
+    start: "14:00",
+    end: "15:30",
+  };
+  const day = {
+    date: "2026-09-04",
+    weekday: "пятница",
+    lessons: [
+      { ...sharedLesson, subgroup: 1 },
+      { ...sharedLesson, subgroup: 2 },
+    ],
+  };
   const combined = formatDay(day, "all");
   assert.match(combined, /обе подгруппы/);
   assert.equal((combined.match(/14:00–15:30/g) || []).length, 1);
@@ -77,8 +112,10 @@ test("lessons unique to one subgroup are not collapsed", () => {
 });
 
 test("missing dates are distinguished from days without lessons", () => {
-  assert.match(formatMissingDate(schedule, "2026-09-14"), /ещё не опубликовано/);
-  assert.match(formatRange(schedule, "2026-09-14", 7, "all")[0], /ещё не опубликовано/);
+  const lastPublishedDate = schedule.days.map((day) => day.date).sort().at(-1);
+  const firstUnpublishedDate = addDays(lastPublishedDate, 1);
+  assert.match(formatMissingDate(schedule, firstUnpublishedDate), /ещё не опубликовано/);
+  assert.match(formatRange(schedule, firstUnpublishedDate, 7, "all")[0], /ещё не опубликовано/);
 });
 
 test("long week output is split below the configured limit", () => {
@@ -88,8 +125,17 @@ test("long week output is split below the configured limit", () => {
   assert.ok(chunks.every((chunk) => chunk.length <= 1000));
 });
 
-test("data status shows coverage and update cadence", () => {
-  const text = formatDataStatus(schedule, "2026-09-01");
-  assert.match(text, /31 августа — 13 сентября/);
+test("data status shows actual coverage and update cadence", () => {
+  const dates = schedule.days.map((day) => day.date).sort();
+  const formatDate = (isoDate) => new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${isoDate}T12:00:00Z`));
+  const text = formatDataStatus(schedule, dates[0]);
+  const expectedPeriod = `Период: ${formatDate(dates[0])} — ${formatDate(dates.at(-1))}`;
+  const expectedSourceCount = schedule.source?.pdfs?.length || 1;
+  assert.ok(text.includes(expectedPeriod));
+  assert.ok(text.includes(`Загружено двухнедель: ${expectedSourceCount}`));
   assert.match(text, /каждый час/);
 });
