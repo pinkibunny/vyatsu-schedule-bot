@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "group": "БТб-3101-03-00",
-  "generated_at": "2026-09-26T19:57:17.037265+00:00",
-  "checked_at": "2026-09-26T22:56:52.736885+00:00",
+  "generated_at": "2026-09-27T19:01:11.287054+00:00",
+  "checked_at": "2026-09-27T19:01:11.287054+00:00",
   "source": {
     "page_url": "https://www.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html",
     "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_14092026_27092026.pdf",
-    "pdf_sha256": "061de4f6948bc75693f3f91ca638ebc8dae4144185edbdf0227c31087ec80118",
+    "pdf_sha256": "1f4c5278e5d26e4097f9e39bf4b691977eabf4b7123f4881d4074057aff9f74f",
     "pdfs": [
       {
         "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_14092026_27092026.pdf",
-        "pdf_sha256": "061de4f6948bc75693f3f91ca638ebc8dae4144185edbdf0227c31087ec80118",
+        "pdf_sha256": "1f4c5278e5d26e4097f9e39bf4b691977eabf4b7123f4881d4074057aff9f74f",
         "published_start": "2026-09-14",
         "published_end": "2026-09-27",
         "schedule_start": "2026-09-14",
@@ -18,7 +18,7 @@
       },
       {
         "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_28092026_11102026.pdf",
-        "pdf_sha256": "eebdf626c08b55c99a7c5eecb016634ffefd826959dc6ccf5bd7c2afaf3e48b7",
+        "pdf_sha256": "5092a80d09a507210ea3aa06a5e4f6d302bc035b3483fa430b1ed6fec14474c2",
         "published_start": "2026-09-28",
         "published_end": "2026-10-11",
         "schedule_start": "2026-09-28",
