@@ -1,0 +1,14 @@
+{
+  "name": "vyatsu-schedule-vk-bot",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-31",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "VK_GROUP_ID": "242581427",
+    "VK_API_VERSION": "5.199"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
