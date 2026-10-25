@@ -7,6 +7,7 @@ const env = {
   VK_TOKEN: "test-token",
   VK_CALLBACK_SECRET: "test-secret",
   VK_CONFIRMATION_CODE: "test-confirmation",
+  SCHEDULE_URL: "https://example.test/schedule.json",
 };
 
 function event(overrides = {}) {
@@ -46,7 +47,7 @@ test("invalid secret, wrong group, and unconfigured callback are rejected", asyn
 
 test("private message receives a test reply and a repeat button", async () => {
   let calls = 0;
-  const response = await handleRequest(request(event()), env, {
+    const response = await handleRequest(request(event()), env, {
     fetchImpl: async (url, options) => {
       calls += 1;
       assert.equal(url, "https://api.vk.com/method/messages.send");
