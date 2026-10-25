@@ -8,5 +8,12 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "STATS_DB",
+      "database_name": "vyatsu-bot-stats",
+      "database_id": "a28007f9-3e84-4f27-9c8e-6403312e9b02"
+    }
+  ]
 }
