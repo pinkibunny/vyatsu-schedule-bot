@@ -24,6 +24,9 @@ def test_discover_group_period() -> None:
     periods = discover_period_links(html)
     assert len(periods) == 1
     assert periods[0].group_id == "26729"
+    assert periods[0].url == (
+        "https://old.vyatsu.ru/reports/schedule/Group/26729_1_01092026_13092026.pdf"
+    )
     assert periods[0].start == date(2026, 9, 1)
     assert periods[0].schedule_start == date(2026, 8, 31)
 

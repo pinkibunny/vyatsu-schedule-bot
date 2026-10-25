@@ -6,7 +6,7 @@ from vyatsu_schedule import PeriodLink, parse_pdf
 
 def test_current_pdf_layout() -> None:
     period = PeriodLink(
-        "https://www.vyatsu.ru/reports/schedule/Group/26729_1_01092026_13092026.pdf",
+        "https://old.vyatsu.ru/reports/schedule/Group/26729_1_01092026_13092026.pdf",
         "26729",
         1,
         date(2026, 9, 1),

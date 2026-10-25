@@ -135,6 +135,6 @@ GitHub Actions запускает тесты и парсер на 17-й мину
 
 ## Источники
 
-- Страница расписания: <https://www.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html>
+- Страница расписания: <https://old.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html>
 - Группа: `БТб-3101-03-00`
 - Текущий внутренний ID группы: `26729`

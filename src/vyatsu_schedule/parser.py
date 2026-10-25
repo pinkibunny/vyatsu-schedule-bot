@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 DEFAULT_GROUP = "БТб-3101-03-00"
 DEFAULT_SCHEDULE_PAGE = (
-    "https://www.vyatsu.ru/studentu-1/spravochnaya-informatsiya/"
+    "https://old.vyatsu.ru/studentu-1/spravochnaya-informatsiya/"
     "raspisanie-zanyatiy-dlya-studentov.html"
 )
 

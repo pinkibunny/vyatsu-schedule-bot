@@ -46,7 +46,7 @@ def main() -> int:
         periods = discover_period_links(
             page_response.text,
             group=args.group,
-            base_url=args.page_url,
+            base_url=str(page_response.url),
         )
         selected_periods = select_periods(periods, args.target_date, limit=2)
         schedules = []
@@ -60,7 +60,7 @@ def main() -> int:
                     pdf_bytes=pdf_response.content,
                     period=period,
                     group=args.group,
-                    page_url=args.page_url,
+                    page_url=str(page_response.url),
                 )
             )
 
