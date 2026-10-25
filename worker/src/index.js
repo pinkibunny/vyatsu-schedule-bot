@@ -9,6 +9,11 @@ import {
   moscowIsoDate,
   subgroupLabel,
 } from "./format.js";
+import {
+  formatStatistics, formatStatisticsUsers, isStatisticsAdmin, readStatistics,
+  readStatisticsUsers, recordStatistics, statisticsAction, statisticsStatus,
+  statisticsUsersKeyboard,
+} from "./statistics.js";
 
 const VALID_SUBGROUPS = ["1", "2", "all"];
 const VALID_SCOPES = ["today", "tomorrow", "aftertomorrow", "week", "nextweek"];
@@ -526,8 +531,57 @@ async function handleCallback(env, callback) {
   }
 }
 
+async function handleStatisticsUpdate(env, update) {
+  const action = statisticsAction(update);
+  if (!action) return false;
+  const callback = update.callback_query;
+  const message = callback?.message || update.message;
+  const from = callback?.from || update.message?.from;
+  if (!isStatisticsAdmin(env, from, message?.chat)) {
+    // No database access and no identifying data outside the owner's private chat.
+    if (callback) {
+      await telegramApi(env, "answerCallbackQuery", {
+        callback_query_id: callback.id, text: "Статистика доступна только владельцу в личном чате.",
+      }, { maxAttempts: 1 }).catch(() => {});
+    } else if (message?.chat?.type === "private") {
+      await sendMessage(env, message.chat.id, "Эта команда доступна только владельцу бота.");
+    }
+    return true;
+  }
+  if (callback) {
+    await telegramApi(env, "answerCallbackQuery", { callback_query_id: callback.id },
+      { maxAttempts: 1 }).catch(() => {});
+  }
+  const status = statisticsStatus(env);
+  if (!status.configured || !status.enabled) {
+    await sendMessage(env, message.chat.id, status.enabled
+      ? "Статистика готова, но база D1 ещё не подключена. Нужна привязка STATS_DB."
+      : "Учёт статистики отключён настройкой STATS_ENABLED.");
+    return true;
+  }
+  try {
+    if (action.kind === "summary") {
+      await sendMessage(env, message.chat.id, formatStatistics(await readStatistics(env)));
+    } else {
+      const report = await readStatisticsUsers(env, action.page);
+      const text = formatStatisticsUsers(report);
+      const keyboard = statisticsUsersKeyboard(report);
+      if (callback?.message?.message_id) {
+        await editMessage(env, message.chat.id, message.message_id, text, keyboard);
+      } else {
+        await sendMessage(env, message.chat.id, text, keyboard);
+      }
+    }
+  } catch {
+    console.error("Statistics report unavailable");
+    await sendMessage(env, message.chat.id, "Статистика временно недоступна. Попробуй позже; расписание работает независимо от неё.");
+  }
+  return true;
+}
+
 async function handleUpdate(env, update) {
   try {
+    if (await handleStatisticsUpdate(env, update)) return;
     if (update.message) await handleMessage(env, update.message);
     if (update.callback_query) await handleCallback(env, update.callback_query);
   } catch (error) {
@@ -560,6 +614,7 @@ export default {
           checked_at: schedule.checked_at || schedule.generated_at,
           period: schedule.period,
           backup: Boolean(schedule._from_backup),
+          statistics: statisticsStatus(env),
         });
       } catch (error) {
         return Response.json(
@@ -576,7 +631,11 @@ export default {
       return new Response("Forbidden", { status: 403 });
     }
     const update = await request.json();
-    ctx.waitUntil(handleUpdate(env, update));
+    // Neither normal replies nor the HTTP acknowledgement wait for D1.
+    ctx.waitUntil(Promise.all([
+      handleUpdate(env, update),
+      recordStatistics(env, update),
+    ]));
     return new Response("OK");
   },
 };
