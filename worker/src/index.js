@@ -140,7 +140,7 @@ export function chooseKeyboard(scope = null) {
   };
 }
 
-export function mainKeyboard(subgroup, feedbackEnabled = false) {
+export function mainKeyboard(subgroup) {
   const rows = [
       [
         { text: "Сегодня", callback_data: `show:today:${subgroup}` },
@@ -157,9 +157,7 @@ export function mainKeyboard(subgroup, feedbackEnabled = false) {
         { text: "🔄 Данные", callback_data: `status:${subgroup}` },
       ],
   ];
-  if (feedbackEnabled) {
-    rows.push([{ text: "💡 Отзыв / идея", callback_data: `feedback:${subgroup}` }]);
-  }
+  rows.push([{ text: "🔵 ВК версия", url: "https://vk.me/club242581427" }]);
   return { inline_keyboard: rows };
 }
 
@@ -279,7 +277,7 @@ async function sendMenu(env, chatId, subgroup) {
     env,
     chatId,
     menuText(subgroup),
-    mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID)),
+    mainKeyboard(subgroup),
   );
 }
 
@@ -294,7 +292,7 @@ async function replaceWithMenu(env, callback, subgroup) {
         chatId,
         messageId,
         menuText(subgroup),
-        mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID)),
+        mainKeyboard(subgroup),
       );
       return;
     } catch (error) {
@@ -367,7 +365,7 @@ async function sendSchedule(env, chatId, scope, subgroup) {
   for (let index = 0; index < messages.length; index += 1) {
     if (index > 0) await sleep(1050);
     const replyMarkup = index === messages.length - 1
-      ? mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID))
+      ? mainKeyboard(subgroup)
       : undefined;
     await sendMessage(env, chatId, messages[index], replyMarkup);
   }
@@ -379,7 +377,7 @@ async function sendDataStatus(env, chatId, subgroup) {
     env,
     chatId,
     formatDataStatus(schedule),
-    mainKeyboard(subgroup, Boolean(env.ADMIN_CHAT_ID)),
+    mainKeyboard(subgroup),
   );
 }
 

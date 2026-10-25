@@ -61,14 +61,15 @@ test("main keyboard includes subgroup and data status", () => {
   assert.equal(keyboard.inline_keyboard[3][1].callback_data, "status:2");
 });
 
-test("feedback button is shown only after admin setup", () => {
-  const disabled = mainKeyboard("all", false);
-  assert.ok(!disabled.inline_keyboard.flat().some((button) =>
-    button.callback_data?.startsWith("feedback:")));
-
-  const enabled = mainKeyboard("all", true);
-  assert.equal(enabled.inline_keyboard.at(-1)[0].text, "💡 Отзыв / идея");
-  assert.equal(enabled.inline_keyboard.at(-1)[0].callback_data, "feedback:all");
+test("VK direct link replaces feedback for every subgroup", () => {
+  for (const subgroup of ["1", "2", "all"]) {
+    const keyboard = mainKeyboard(subgroup);
+    assert.ok(!keyboard.inline_keyboard.flat().some((button) =>
+      button.callback_data?.startsWith("feedback:")));
+    assert.deepEqual(keyboard.inline_keyboard.at(-1), [{
+      text: "🔵 ВК версия", url: "https://vk.me/club242581427",
+    }]);
+  }
 });
 
 test("calendar shows known dates and keeps subgroup", () => {

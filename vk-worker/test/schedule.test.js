@@ -60,6 +60,10 @@ test("start and subgroup menu do not need the schedule service", async () => {
   const menu = await buildReplies(env, message("set:2"), unavailable);
   assert.match(menu[0].text, /2 подгруппа/);
   assert.ok(actions(menu[0]).includes("show:aftertomorrow:2"));
+  assert.ok(!actions(menu[0]).some((action) => action.startsWith("feedback:")));
+  assert.ok(menu[0].keyboard.buttons.every((row) => row.length > 0));
+  assert.ok(menu[0].keyboard.buttons.flat().every((button) =>
+    button.action.type === "text" && JSON.parse(button.action.payload).action));
 });
 
 test("typed commands ask for subgroup and carry the chosen date", async () => {
@@ -161,11 +165,11 @@ test("unavailable schedule without backup gives an actionable reply", async () =
   assert.ok(actions(reply).includes("show:today:1"));
 });
 
-test("feedback uses existing anonymous Telegram flow and does not promise VK anonymity", async () => {
+test("old feedback buttons return to the schedule menu", async () => {
   const [reply] = await buildReplies(env, message("feedback:2"));
-  assert.match(reply.text, /администраторы сообщества видят отправителя/);
-  assert.equal(reply.keyboard.buttons[0][0].action.link, "https://t.me/ScheduleBTBbot");
-  assert.ok(actions(reply).includes("set:2"));
+  assert.match(reply.text, /2 подгруппа/);
+  assert.ok(actions(reply).includes("show:today:2"));
+  assert.ok(!actions(reply).some((action) => action.startsWith("feedback:")));
 });
 
 test("formatting decodes escaped subjects once without dropping literal HTML-like text", () => {

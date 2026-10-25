@@ -9,7 +9,6 @@ import {
 const GROUP = "БТб-3101-03-00";
 const SUBGROUPS = new Set(["1", "2", "all"]);
 const SCOPES = new Set(["today", "tomorrow", "aftertomorrow", "week", "nextweek"]);
-const TELEGRAM_URL = "https://t.me/ScheduleBTBbot";
 
 export function plainText(html) {
   return String(html).replace(/<\/?(?:b|i|code)>/g, "")
@@ -29,15 +28,15 @@ export function vkKeyboard(markup) {
   return {
     one_time: false,
     inline: false,
-    buttons: markup.inline_keyboard.map((row) => row.map((button) =>
-      textButton(button.text, button.callback_data))),
+    buttons: markup.inline_keyboard.map((row) => row
+      .filter((button) => typeof button.callback_data === "string")
+      .map((button) => textButton(button.text, button.callback_data)))
+      .filter((row) => row.length > 0),
   };
 }
 
 function menuKeyboard(subgroup) {
-  const keyboard = vkKeyboard(mainKeyboard(subgroup));
-  keyboard.buttons.push([textButton("💡 Отзыв / идея", `feedback:${subgroup}`)]);
-  return keyboard;
+  return vkKeyboard(mainKeyboard(subgroup));
 }
 
 function menuText(subgroup) {
@@ -158,12 +157,9 @@ export async function buildReplies(env, message, options = {}) {
     return [{ text: menuText(first), keyboard: menuKeyboard(first) }];
   }
   if (kind === "feedback") {
+    const subgroup = SUBGROUPS.has(first) ? first : "all";
     return [{
-      text: "💡 Отзыв / идея\n\nАнонимная обратная связь доступна в Telegram-боте: открой его и нажми «Отзыв / идея».\n\nВ переписке ВК администраторы сообщества видят отправителя, поэтому анонимность сообщений здесь не обещаем.",
-      keyboard: { one_time: false, buttons: [
-        [{ action: { type: "open_link", label: "Открыть Telegram-бота", link: TELEGRAM_URL } }],
-        [textButton("↩️ В меню", `set:${SUBGROUPS.has(first) ? first : "all"}`)],
-      ] },
+      text: menuText(subgroup), keyboard: menuKeyboard(subgroup),
     }];
   }
 
