@@ -1,24 +1,24 @@
 {
   "schema_version": 1,
   "group": "БТб-3101-03-00",
-  "generated_at": "2026-10-22T22:24:57.502186+00:00",
-  "checked_at": "2026-10-22T22:24:57.502186+00:00",
+  "generated_at": "2026-10-25T12:59:01.715014+00:00",
+  "checked_at": "2026-10-25T12:59:01.715014+00:00",
   "source": {
-    "page_url": "https://www.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html",
-    "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_12102026_25102026.pdf",
-    "pdf_sha256": "ec530b9466649c7129d774b2e004f83067630f05298a502754ab70f9a948a91d",
+    "page_url": "https://old.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html",
+    "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_12102026_25102026.pdf",
+    "pdf_sha256": "c2d51d24d7cfa68965c56d738cda3b5c977b346e37419e913ed72d1f4dac4b0f",
     "pdfs": [
       {
-        "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_12102026_25102026.pdf",
-        "pdf_sha256": "ec530b9466649c7129d774b2e004f83067630f05298a502754ab70f9a948a91d",
+        "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_12102026_25102026.pdf",
+        "pdf_sha256": "c2d51d24d7cfa68965c56d738cda3b5c977b346e37419e913ed72d1f4dac4b0f",
         "published_start": "2026-10-12",
         "published_end": "2026-10-25",
         "schedule_start": "2026-10-12",
         "schedule_end": "2026-10-25"
       },
       {
-        "pdf_url": "https://www.vyatsu.ru/reports/schedule/Group/26729_1_26102026_08112026.pdf",
-        "pdf_sha256": "bdc6de5cd43cdc63272602d25a42a7f953d0a631cce708c875dc4ae2c058bfec",
+        "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_26102026_08112026.pdf",
+        "pdf_sha256": "1b04df2e53670735a31f809fbe99920b27405e881f4bdd1a07d172d91aa976f1",
         "published_start": "2026-10-26",
         "published_end": "2026-11-08",
         "schedule_start": "2026-10-26",
