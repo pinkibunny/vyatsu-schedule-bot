@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "group": "БТб-3101-03-00",
-  "generated_at": "2026-11-01T21:14:29.959750+00:00",
-  "checked_at": "2026-11-03T01:39:33.702640+00:00",
+  "generated_at": "2026-11-03T09:40:36.546525+00:00",
+  "checked_at": "2026-11-03T09:40:36.546525+00:00",
   "source": {
     "page_url": "https://old.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html",
     "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_26102026_08112026.pdf",
-    "pdf_sha256": "47a7e9db7735f1a2b1a1659ea613ca723399a7274759c3e378142beefbeb850e",
+    "pdf_sha256": "3376cacf2fe074d3e8d6ba0949f41b962ffedadb01a05dd317e8475131d2a65f",
     "pdfs": [
       {
         "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_26102026_08112026.pdf",
-        "pdf_sha256": "47a7e9db7735f1a2b1a1659ea613ca723399a7274759c3e378142beefbeb850e",
+        "pdf_sha256": "3376cacf2fe074d3e8d6ba0949f41b962ffedadb01a05dd317e8475131d2a65f",
         "published_start": "2026-10-26",
         "published_end": "2026-11-08",
         "schedule_start": "2026-10-26",
@@ -465,10 +465,10 @@
           "subject": "Специальные главы биохимии",
           "type": "Практическое занятие",
           "teacher": "Лундовских И.А.",
-          "room": "1-128",
+          "room": "1-242",
           "subgroup": null,
           "stream_code": null,
-          "raw": "Специальные главы биохимии Практическое занятие Лундовских И.А. 1-128",
+          "raw": "Специальные главы биохимии Практическое занятие Лундовских И.А. 1-242",
           "start": "15:45",
           "end": "17:15"
         }
