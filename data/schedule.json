@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "group": "БТб-3101-03-00",
-  "generated_at": "2026-11-06T21:35:06.447503+00:00",
-  "checked_at": "2026-11-06T21:35:06.447503+00:00",
+  "generated_at": "2026-11-07T20:17:14.215218+00:00",
+  "checked_at": "2026-11-07T20:17:14.215218+00:00",
   "source": {
     "page_url": "https://old.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html",
     "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_26102026_08112026.pdf",
-    "pdf_sha256": "f587c0a75186908537cf82268ad0dd97ca1610fce27dbe5e699ebe47a50b9bae",
+    "pdf_sha256": "b672d4607c95e7a85fdf36dc44e0bf2da11ed1dbe5a83e466e0c80ceb263dfe4",
     "pdfs": [
       {
         "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_26102026_08112026.pdf",
-        "pdf_sha256": "f587c0a75186908537cf82268ad0dd97ca1610fce27dbe5e699ebe47a50b9bae",
+        "pdf_sha256": "b672d4607c95e7a85fdf36dc44e0bf2da11ed1dbe5a83e466e0c80ceb263dfe4",
         "published_start": "2026-10-26",
         "published_end": "2026-11-08",
         "schedule_start": "2026-10-26",
@@ -18,7 +18,7 @@
       },
       {
         "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_09112026_22112026.pdf",
-        "pdf_sha256": "b022a41faeb1c5718f5fdbb54c9285ecda3b0eea6d63125c793c54db08cb3838",
+        "pdf_sha256": "93984367fe92ae0035f240e05c01dd30c783d17090eb925978883e78a55deeab",
         "published_start": "2026-11-09",
         "published_end": "2026-11-22",
         "schedule_start": "2026-11-09",
