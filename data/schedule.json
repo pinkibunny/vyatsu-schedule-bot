@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "group": "БТб-3101-03-00",
-  "generated_at": "2026-11-24T23:03:57.535008+00:00",
-  "checked_at": "2026-11-24T23:03:57.535008+00:00",
+  "generated_at": "2026-11-26T01:49:13.339805+00:00",
+  "checked_at": "2026-11-26T01:49:13.339805+00:00",
   "source": {
     "page_url": "https://old.vyatsu.ru/studentu-1/spravochnaya-informatsiya/raspisanie-zanyatiy-dlya-studentov.html",
     "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_23112026_06122026.pdf",
-    "pdf_sha256": "2bd6123ca218d046f74b3bbe6c47c89fe9a32c3a93d283c1277e2863f9f44c68",
+    "pdf_sha256": "2d2e306e4e86a71a63a75578e038aa16c72428fc4eedb6668502174d234d12f8",
     "pdfs": [
       {
         "pdf_url": "https://old.vyatsu.ru/reports/schedule/Group/26729_1_23112026_06122026.pdf",
-        "pdf_sha256": "2bd6123ca218d046f74b3bbe6c47c89fe9a32c3a93d283c1277e2863f9f44c68",
+        "pdf_sha256": "2d2e306e4e86a71a63a75578e038aa16c72428fc4eedb6668502174d234d12f8",
         "published_start": "2026-11-23",
         "published_end": "2026-12-06",
         "schedule_start": "2026-11-23",
@@ -410,28 +410,6 @@
           "raw": "Инженерная и компьютерная графика Практическое занятие Зонов А.В. 1-601",
           "start": "11:45",
           "end": "13:15"
-        },
-        {
-          "subject": "Нормативно-правовые аспекты регулирования оборота лекарственных средств",
-          "type": "Лекция",
-          "teacher": "Старкова Е.В.",
-          "room": "1-516",
-          "subgroup": null,
-          "stream_code": null,
-          "raw": "Нормативно-правовые аспекты регулирования оборота лекарственных средств Лекция Старкова Е.В. 1-516",
-          "start": "14:00",
-          "end": "15:30"
-        },
-        {
-          "subject": "Нормативно-правовые аспекты регулирования оборота лекарственных средств",
-          "type": "Практическое занятие",
-          "teacher": "Старкова Е.В.",
-          "room": "1-516",
-          "subgroup": null,
-          "stream_code": null,
-          "raw": "Нормативно-правовые аспекты регулирования оборота лекарственных средств Практическое занятие Старкова Е.В. 1-516",
-          "start": "15:45",
-          "end": "17:15"
         }
       ]
     },
